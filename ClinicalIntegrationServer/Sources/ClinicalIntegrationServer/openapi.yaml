@@ -1,0 +1,211 @@
+openapi: '3.1.0'
+info:
+  title: Clinical System Integration API
+  version: 1.0.0
+  description: >
+    Internal API for the clinical system integration component of the PGHD integration artifact.
+    Receives normalized FHIR Observations from the client-facing integration component,
+    converts them to GDT 2.1 format, and writes .gdt files to the PMS exchange directory.
+    Supports DP2 (PMS-agnostic interoperability) and DR2 (system-independent interface).
+servers:
+  - url: http://localhost:8083
+    description: Local development server
+paths:
+  /process:
+    post:
+      operationId: processObservations
+      summary: Process normalized FHIR Observations and generate GDT files
+      description: >
+        Receives normalized FHIR Observation data with patient context from the
+        client-facing integration component. Converts each observation to GDT 2.1 format
+        and writes .gdt files to the configured PMS exchange directory.
+        This endpoint is intended for internal artifact communication only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessingRequest'
+      responses:
+        '200':
+          description: Observations processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingResult'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal processing error (e.g., GDT conversion failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /status/{patientId}:
+    get:
+      operationId: getPatientStatus
+      summary: Get last GDT write status for a patient
+      description: >
+        Returns the timestamp and status of the last GDT file written for the
+        specified patient. Used by the client-facing integration component to
+        provide transfer status feedback.
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The patient identifier (hashed for privacy)
+      responses:
+        '200':
+          description: Patient transfer status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientStatus'
+        '404':
+          description: No transfer records found for this patient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ProcessingRequest:
+      type: object
+      required:
+        - patientId
+        - observations
+      properties:
+        patientId:
+          type: string
+          description: The patient identifier from the IAM component
+        patientFirstName:
+          type: string
+          description: Patient first name for GDT record
+        patientLastName:
+          type: string
+          description: Patient last name for GDT record
+        patientDateOfBirth:
+          type: string
+          description: Patient date of birth (YYYY-MM-DD format)
+        observations:
+          type: array
+          items:
+            $ref: '#/components/schemas/NormalizedObservation'
+          description: Array of normalized FHIR Observations as JSON objects
+    NormalizedObservation:
+      type: object
+      description: >
+        A normalized FHIR R4 Observation resource. Device-specific aspects have
+        been resolved by the client-facing integration component. The observation
+        is passed as a raw JSON object conforming to FHIR R4 Observation.
+      properties:
+        resourceType:
+          type: string
+          const: Observation
+        id:
+          type: string
+        status:
+          type: string
+        code:
+          type: object
+        effectiveDateTime:
+          type: string
+        effectivePeriod:
+          type: object
+        valueQuantity:
+          type: object
+        valueCodeableConcept:
+          type: object
+        valueString:
+          type: string
+        component:
+          type: array
+          items:
+            type: object
+        interpretation:
+          type: array
+          items:
+            type: object
+        referenceRange:
+          type: array
+          items:
+            type: object
+    ProcessingResult:
+      type: object
+      required:
+        - status
+        - totalProcessed
+        - successful
+        - failed
+      properties:
+        status:
+          type: string
+          enum:
+            - success
+            - partial
+            - error
+        totalProcessed:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/GDTResult'
+    GDTResult:
+      type: object
+      properties:
+        observationId:
+          type: string
+        status:
+          type: string
+          enum:
+            - success
+            - error
+        gdtFileName:
+          type: string
+          description: Name of the generated .gdt file
+        warnings:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+    PatientStatus:
+      type: object
+      required:
+        - patientId
+        - hasRecords
+      properties:
+        patientId:
+          type: string
+        hasRecords:
+          type: boolean
+        lastTransferTimestamp:
+          type: string
+          format: date-time
+        lastTransferStatus:
+          type: string
+          enum:
+            - success
+            - error
+        totalTransfers:
+          type: integer
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string

@@ -1,0 +1,280 @@
+openapi: '3.1.0'
+info:
+  title: Client-Facing Integration API
+  version: 1.0.0
+  description: >
+    API for the client-facing integration component of the PGHD integration artifact.
+    Receives health data from patient-facing clients, validates authentication,
+    normalizes device-specific data, and forwards to the clinical system integration component.
+    Supports DP1 (simple integration), DP3 (layered architecture), and DP4 (security/privacy).
+servers:
+  - url: http://localhost:8082
+    description: Local development server
+paths:
+  /metadata:
+    get:
+      operationId: getMetadata
+      summary: Retrieve public client configuration metadata
+      description: >
+        Returns non-sensitive metadata for client configuration including the IAM
+        discovery URL, supported data types, and server version. This endpoint is
+        publicly accessible and does not require authentication. Supports DP1 and DP3
+        by enabling discovery-based client configuration.
+      responses:
+        '200':
+          description: Server metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerMetadata'
+  /observations:
+    post:
+      operationId: submitObservations
+      summary: Submit FHIR Observation(s) for processing
+      description: >
+        Accepts a FHIR R4 Bundle containing Observation resources from the patient-facing
+        client. Requires a valid Bearer token for authentication and an Idempotency-Key
+        header to prevent duplicate processing. The component validates the token,
+        normalizes device-specific aspects, and forwards to the clinical system
+        integration component. Supports DR1, DR4, DP3, and DP4.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: >
+            Unique identifier for this submission to ensure idempotent processing.
+            Must be a UUID. Duplicate keys within 24 hours return the cached result.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/fhir+json:
+            schema:
+              $ref: '#/components/schemas/FHIRBundle'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FHIRBundle'
+      responses:
+        '201':
+          description: Observations successfully processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResult'
+        '200':
+          description: Duplicate submission (idempotency key already processed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResult'
+        '400':
+          description: Invalid FHIR Bundle or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Token valid but insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /status:
+    get:
+      operationId: getTransferStatus
+      summary: Get transfer status for the authenticated patient
+      description: >
+        Returns the last successful transfer timestamp and broad error categories
+        for the authenticated patient. Does not expose personal health information.
+        Supports DP1 (patient can independently identify issues) and DP4 (no PHI in response).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Transfer status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferStatus'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ServerMetadata:
+      type: object
+      required:
+        - serverVersion
+        - iamDiscoveryUrl
+        - supportedResourceTypes
+      properties:
+        serverVersion:
+          type: string
+          description: Version of the client-facing integration server
+          examples:
+            - '1.0.0'
+        iamDiscoveryUrl:
+          type: string
+          format: uri
+          description: URL to the IAM OpenID Connect discovery document
+          examples:
+            - 'http://localhost:8081/.well-known/openid-configuration'
+        supportedResourceTypes:
+          type: array
+          items:
+            type: string
+          description: List of FHIR resource types accepted by this server
+          examples:
+            - ['Observation']
+        supportedProfiles:
+          type: array
+          items:
+            type: string
+          description: Optional list of supported FHIR profiles
+    FHIRBundle:
+      type: object
+      description: A FHIR R4 Bundle resource containing Observation entries
+      required:
+        - resourceType
+        - type
+      properties:
+        resourceType:
+          type: string
+          const: Bundle
+        type:
+          type: string
+          enum:
+            - collection
+            - batch
+            - transaction
+        entry:
+          type: array
+          items:
+            type: object
+            properties:
+              fullUrl:
+                type: string
+                format: uri
+                description: URI for resource (e.g. urn:uuid:...)
+              request:
+                type: object
+                description: Transaction request metadata (method, url)
+                properties:
+                  method:
+                    type: string
+                  url:
+                    type: string
+              resource:
+                type: object
+                description: A FHIR Observation resource
+    SubmissionResult:
+      type: object
+      required:
+        - status
+        - totalProcessed
+        - successful
+        - failed
+      properties:
+        status:
+          type: string
+          enum:
+            - success
+            - partial
+            - error
+        totalProcessed:
+          type: integer
+        successful:
+          type: integer
+        failed:
+          type: integer
+        idempotencyKey:
+          type: string
+          format: uuid
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ObservationResult'
+        processedAt:
+          type: string
+          format: date-time
+    ObservationResult:
+      type: object
+      properties:
+        observationId:
+          type: string
+        status:
+          type: string
+          enum:
+            - success
+            - error
+        error:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+    TransferStatus:
+      type: object
+      required:
+        - hasSuccessfulTransfer
+      properties:
+        hasSuccessfulTransfer:
+          type: boolean
+        lastSuccessfulTransfer:
+          type: string
+          format: date-time
+          description: Timestamp of the last successful data transfer
+        lastAttempt:
+          type: string
+          format: date-time
+        lastError:
+          type: string
+          description: >
+            Broad error category if the last transfer failed.
+            Does not contain personal health information.
+          enum:
+            - none
+            - authentication_error
+            - validation_error
+            - processing_error
+            - server_error
+            - unknown
+        pendingCount:
+          type: integer
+          description: Number of observations pending processing
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: string

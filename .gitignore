@@ -1,0 +1,11 @@
+.DS_Store
+.build
+/Packages
+xcuserdata/
+DerivedData/
+IAMServer/data/
+ClinicalIntegrationServer/Sources/ClinicalIntegrationServer/gdt_exchange/
+ClinicalIntegrationServer/Sources/ClinicalIntegrationServer/data/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc

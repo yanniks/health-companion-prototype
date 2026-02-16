@@ -1,0 +1,84 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/IAMServer",
+            "name": "Debug IAMServer (IAMServer)",
+            "target": "IAMServer",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug IAMServer (IAMServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/IAMServer",
+            "name": "Release IAMServer (IAMServer)",
+            "target": "IAMServer",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release IAMServer (IAMServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClientFacingServer",
+            "name": "Debug ClientFacingServer (ClientFacingServer)",
+            "target": "ClientFacingServer",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClientFacingServer (ClientFacingServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClientFacingServer",
+            "name": "Release ClientFacingServer (ClientFacingServer)",
+            "target": "ClientFacingServer",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClientFacingServer (ClientFacingServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClinicalIntegrationServer",
+            "name": "Debug ClinicalIntegrationServer (ClinicalIntegrationServer)",
+            "target": "ClinicalIntegrationServer",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClinicalIntegrationServer (ClinicalIntegrationServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClinicalIntegrationServer",
+            "name": "Release ClinicalIntegrationServer (ClinicalIntegrationServer)",
+            "target": "ClinicalIntegrationServer",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClinicalIntegrationServer (ClinicalIntegrationServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClientFacingServer",
+            "name": "Debug ClientFacingServer (ClientFacingServer)",
+            "target": "ClientFacingServer",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClientFacingServer (ClientFacingServer)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Swift-Code}/ClientFacingServer",
+            "name": "Release ClientFacingServer (ClientFacingServer)",
+            "target": "ClientFacingServer",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClientFacingServer (ClientFacingServer)"
+        }
+    ]
+}
