@@ -1,6 +1,6 @@
 import Foundation
-import OpenAPIRuntime
 import HTTPTypes
+import OpenAPIRuntime
 
 /// Sliding-window rate limiter for the client-facing integration component (DP4, §5.5.1).
 ///
@@ -55,7 +55,6 @@ actor RateLimiter {
     }
 }
 
-
 /// OpenAPI `ServerMiddleware` that enforces per-client rate limits (DP4).
 ///
 /// Only applies to authenticated endpoints. Uses the JWT `sub` claim
@@ -84,13 +83,14 @@ struct RateLimitMiddleware: ServerMiddleware {
             // Task-local set by AuthMiddleware (runs first in the chain)
             clientId = subject
         } else if let authHeader = request.headerFields[.authorization],
-                  authHeader.lowercased().hasPrefix("bearer ") {
+            authHeader.lowercased().hasPrefix("bearer ")
+        {
             // Parse sub claim from JWT payload (second segment, base64url)
             let token = String(authHeader.dropFirst(7))
             let parts = token.split(separator: ".")
             if parts.count >= 2,
-               let payloadData = base64URLDecode(String(parts[1])),
-               let payload = try? JSONDecoder().decode(MinimalJWTPayload.self, from: payloadData)
+                let payloadData = base64URLDecode(String(parts[1])),
+                let payload = try? JSONDecoder().decode(MinimalJWTPayload.self, from: payloadData)
             {
                 clientId = payload.sub
             } else {
@@ -105,11 +105,12 @@ struct RateLimitMiddleware: ServerMiddleware {
             let retryAfter = await rateLimiter.retryAfter(clientId: clientId)
             await auditLogger.logAuthFailure(reason: "rate_limit_exceeded:\(clientId)")
 
-            let errorBody = try JSONEncoder().encode(RateLimitErrorBody(
-                error: "rate_limit_exceeded",
-                message: "Too many requests. Try again in \(retryAfter) seconds.",
-                retryAfterSeconds: retryAfter
-            ))
+            let errorBody = try JSONEncoder().encode(
+                RateLimitErrorBody(
+                    error: "rate_limit_exceeded",
+                    message: "Too many requests. Try again in \(retryAfter) seconds.",
+                    retryAfterSeconds: retryAfter
+                ))
             var response = HTTPResponse(status: .tooManyRequests)
             response.headerFields[HTTPField.Name("Retry-After")!] = "\(retryAfter)"
             return (response, HTTPBody(errorBody))
@@ -121,7 +122,8 @@ struct RateLimitMiddleware: ServerMiddleware {
     // MARK: - Helpers
 
     private func base64URLDecode(_ string: String) -> Data? {
-        var base64 = string
+        var base64 =
+            string
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
         while base64.count % 4 != 0 {

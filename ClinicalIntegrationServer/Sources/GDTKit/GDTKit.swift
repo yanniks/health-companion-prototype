@@ -35,9 +35,9 @@
 /// For more information about the GDT standard, visit:
 /// https://www.qms-standards.de/standards/gdt/
 
+@_exported import struct Foundation.Data
 // Export all public types
 @_exported import struct Foundation.Date
-@_exported import struct Foundation.Data
 @_exported import struct Foundation.URL
 
 // Re-export public types

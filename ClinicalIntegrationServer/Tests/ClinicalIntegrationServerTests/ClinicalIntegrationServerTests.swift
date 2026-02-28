@@ -1,11 +1,12 @@
+import Foundation
+import OpenAPIVapor
 import Testing
 import Vapor
 import VaporTesting
-import OpenAPIVapor
+
 @testable import ClinicalIntegrationServer
 @testable import FHIRToGDT
 @testable import GDTKit
-import Foundation
 
 /// Clinical Integration Server test suite
 /// Maps to: DP2 (Standards compliance), DR3 (Interoperability with PMS)

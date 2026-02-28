@@ -9,7 +9,6 @@
 import CryptoKit
 import Foundation
 
-
 /// Generates PKCE code verifier and challenge pairs.
 ///
 /// Uses the S256 challenge method as required by the IAM server:

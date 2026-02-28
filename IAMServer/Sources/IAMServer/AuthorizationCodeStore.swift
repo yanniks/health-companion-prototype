@@ -5,7 +5,7 @@ import Foundation
 actor AuthorizationCodeStore {
     private let filePath: String
     private var codes: [String: AuthorizationCode] = [:]
-    private let codeLifetime: TimeInterval = 600 // 10 minutes
+    private let codeLifetime: TimeInterval = 600  // 10 minutes
 
     init(directory: String) {
         self.filePath = "\(directory)/auth_codes.txt"
@@ -19,13 +19,13 @@ actor AuthorizationCodeStore {
         // Load existing codes (if server restarts), filtering expired
         let now = Date().timeIntervalSince1970
         if let data = fileManager.contents(atPath: filePath),
-           let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         {
             let decoder = JSONDecoder()
             for line in content.components(separatedBy: .newlines) where !line.isEmpty {
                 if let lineData = line.data(using: .utf8),
-                   let code = try? decoder.decode(AuthorizationCode.self, from: lineData),
-                   now - code.createdAt < codeLifetime
+                    let code = try? decoder.decode(AuthorizationCode.self, from: lineData),
+                    now - code.createdAt < codeLifetime
                 {
                     codes[code.code] = code
                 }
@@ -92,7 +92,8 @@ actor AuthorizationCodeStore {
 
     private func generateSecureCode() -> String {
         var bytes = [UInt8](repeating: 0, count: 32)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        var rng = SystemRandomNumberGenerator()
+        for i in bytes.indices { bytes[i] = rng.next() }
         return Data(bytes).map { String(format: "%02x", $0) }.joined()
     }
 

@@ -12,8 +12,7 @@ enum StorageKeys {
     static let onboardingFlowComplete = "onboardingFlow.complete"
 
     // MARK: - Server Configuration
-    /// The IAM server base URL string (e.g. "http://localhost:8081").
-    static let iamServerURL = "server.iamURL"
     /// The Client-Facing server base URL string (e.g. "http://localhost:8082").
+    /// The IAM server is discovered automatically via the metadata endpoint.
     static let clientFacingServerURL = "server.clientFacingURL"
 }

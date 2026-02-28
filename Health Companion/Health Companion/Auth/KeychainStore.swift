@@ -10,7 +10,6 @@ import Foundation
 import OSLog
 import Security
 
-
 /// Thread-safe Keychain wrapper for storing and retrieving OAuth credentials.
 ///
 /// Uses `kSecClassGenericPassword` with a service identifier to scope
@@ -45,7 +44,7 @@ struct KeychainStore: Sendable {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
         ]
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
@@ -58,7 +57,7 @@ struct KeychainStore: Sendable {
     func deleteAll() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecAttrService as String: service,
         ]
         SecItemDelete(query as CFDictionary)
     }
@@ -74,7 +73,7 @@ struct KeychainStore: Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -90,7 +89,7 @@ struct KeychainStore: Sendable {
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
         var item: CFTypeRef?

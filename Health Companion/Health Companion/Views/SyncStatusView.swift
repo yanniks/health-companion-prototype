@@ -9,7 +9,6 @@
 import SpeziHealthKit
 import SwiftUI
 
-
 /// A user-friendly synchronization overview.
 ///
 /// Shows a simple "Everything OK" / warning / error state to the user.
@@ -64,9 +63,7 @@ struct SyncStatusView: View {
 
                 if let lastSync = syncModule.lastSuccessfulSync {
                     Label {
-                        Text("Last sync: ") +
-                        Text(lastSync, style: .relative) +
-                        Text(" ago")
+                        Text("Last sync: \(lastSync, style: .relative)  ago")
                     } icon: {
                         Image(systemName: "clock")
                     }
@@ -120,13 +117,7 @@ struct SyncStatusView: View {
     }
 
     private var syncedCount: Int {
-        let total = syncModule.pendingCount
-        let allCount = (syncModule.transferStatus?.pendingCount ?? 0)
-        // Use last successful transfer as a proxy
-        if syncModule.lastSuccessfulSync != nil {
-            return max(0, allCount)
-        }
-        return max(0, allCount - total)
+        syncModule.syncedCount
     }
 
     @ViewBuilder
@@ -189,7 +180,6 @@ struct SyncStatusView: View {
     }
 }
 
-
 // MARK: - Stat Card
 
 private struct StatCard: View {
@@ -216,7 +206,6 @@ private struct StatCard: View {
     }
 }
 
-
 // MARK: - Detail Sheet
 
 /// Technical detail view shown on a separate sheet.
@@ -230,28 +219,33 @@ struct SyncDetailView: View {
             List {
                 // Connection
                 Section("Connection") {
-                    row(label: "Authenticated",
+                    row(
+                        label: "Authenticated",
                         systemImage: authModule.isAuthenticated ? "checkmark.circle.fill" : "xmark.circle.fill",
                         value: authModule.isAuthenticated ? "Yes" : "No",
                         color: authModule.isAuthenticated ? .green : .red)
 
                     if let patientId = authModule.patientId {
-                        row(label: "Patient ID", systemImage: "person.fill",
+                        row(
+                            label: "Patient ID", systemImage: "person.fill",
                             value: patientId, color: .secondary)
                     }
 
                     if let url = authModule.clientFacingBaseURL {
-                        row(label: "Server", systemImage: "server.rack",
+                        row(
+                            label: "Server", systemImage: "server.rack",
                             value: url.host() ?? url.absoluteString, color: .secondary)
                     }
                 }
 
                 // Synchronization
                 Section("Synchronization") {
-                    row(label: "Status", systemImage: syncIcon,
+                    row(
+                        label: "Status", systemImage: syncIcon,
                         value: syncStatusText, color: syncColor)
 
-                    row(label: "Pending Items", systemImage: "arrow.up.circle",
+                    row(
+                        label: "Pending Items", systemImage: "arrow.up.circle",
                         value: "\(syncModule.pendingCount)", color: .secondary)
 
                     if let lastSync = syncModule.lastSuccessfulSync {
@@ -264,7 +258,8 @@ struct SyncDetailView: View {
                     }
 
                     if let error = syncModule.lastError {
-                        row(label: "Last Error", systemImage: "exclamationmark.triangle.fill",
+                        row(
+                            label: "Last Error", systemImage: "exclamationmark.triangle.fill",
                             value: error, color: .red)
                     }
                 }
@@ -272,7 +267,8 @@ struct SyncDetailView: View {
                 // Server-side
                 if let status = syncModule.transferStatus {
                     Section("Server Status") {
-                        row(label: "Successful Transfer",
+                        row(
+                            label: "Successful Transfer",
                             systemImage: status.hasSuccessfulTransfer ? "checkmark.circle.fill" : "xmark.circle",
                             value: status.hasSuccessfulTransfer ? "Yes" : "No",
                             color: status.hasSuccessfulTransfer ? .green : .secondary)
@@ -287,12 +283,14 @@ struct SyncDetailView: View {
                         }
 
                         if let pending = status.pendingCount {
-                            row(label: "Server Pending", systemImage: "hourglass",
+                            row(
+                                label: "Server Pending", systemImage: "hourglass",
                                 value: "\(pending)", color: .secondary)
                         }
 
                         if let serverError = status.lastError {
-                            row(label: "Server Error", systemImage: "exclamationmark.triangle",
+                            row(
+                                label: "Server Error", systemImage: "exclamationmark.triangle",
                                 value: serverError, color: .red)
                         }
                     }

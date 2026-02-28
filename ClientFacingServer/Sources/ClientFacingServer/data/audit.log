@@ -27,3 +27,10 @@
 {"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-15T21:47:21Z"}
 {"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-15T21:47:31Z"}
 {"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-15T21:47:41Z"}
+{"event":"observation_submission","idempotencyKey":"MDI4QzhFNUItNTQzQi00M0Q1LTkzMUQtNTU0NzU2MDlDMTNDLDlGRkJERTk5LTE4","observationCount":8,"outcome":"success","patientRef":"2","payloadHashSHA256":"1c4b6807559188bad743365a914a78059808f624bccd8964f55a0823993db8b3","timestamp":"2026-02-17T20:04:38Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:04:39Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:04:49Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:04:59Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:05:09Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:05:20Z"}
+{"event":"status_query","outcome":"ok","patientRef":"2","timestamp":"2026-02-17T20:12:24Z"}

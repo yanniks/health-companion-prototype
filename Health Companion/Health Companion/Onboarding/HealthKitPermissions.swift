@@ -6,19 +6,17 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Spezi
 import SpeziHealthKit
 import SpeziOnboarding
 import SpeziViews
 import SwiftUI
-import Spezi
-
 
 struct HealthKitPermissions: View {
     @Environment(HealthKit.self) private var healthKit
     @Environment(ManagedNavigationStack.Path.self) private var managedNavigationPath
 
     @State private var healthKitProcessing = false
-
 
     var body: some View {
         OnboardingView(
@@ -66,7 +64,6 @@ struct HealthKitPermissions: View {
         .toolbar(.visible)
     }
 }
-
 
 #Preview {
     ManagedNavigationStack {

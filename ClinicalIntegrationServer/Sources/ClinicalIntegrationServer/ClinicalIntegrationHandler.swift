@@ -1,8 +1,8 @@
-import Foundation
-import OpenAPIRuntime
 import FHIRToGDT
+import Foundation
 import GDTKit
 import ModelsR4
+import OpenAPIRuntime
 
 /// Implements the OpenAPI-generated APIProtocol for clinical integration
 /// Converts FHIR observations to GDT 2.1 and writes to PMS exchange directory
@@ -39,17 +39,19 @@ struct ClinicalIntegrationHandler: APIProtocol {
                 // Convert to GDT and write to file
                 let result = try converter.convertAndWrite(observation)
 
-                gdtResults.append(Components.Schemas.GDTResult(
-                    gdtFileName: result.filePath?.lastPathComponent,
-                    warnings: result.warnings.isEmpty ? nil : result.warnings,
-                    error: nil
-                ))
+                gdtResults.append(
+                    Components.Schemas.GDTResult(
+                        gdtFileName: result.filePath?.lastPathComponent,
+                        warnings: result.warnings.isEmpty ? nil : result.warnings,
+                        error: nil
+                    ))
             } catch {
-                gdtResults.append(Components.Schemas.GDTResult(
-                    gdtFileName: nil,
-                    warnings: nil,
-                    error: error.localizedDescription
-                ))
+                gdtResults.append(
+                    Components.Schemas.GDTResult(
+                        gdtFileName: nil,
+                        warnings: nil,
+                        error: error.localizedDescription
+                    ))
             }
         }
 
@@ -76,22 +78,27 @@ struct ClinicalIntegrationHandler: APIProtocol {
     ) async throws -> Operations.getPatientStatus.Output {
         let patientId = input.path.patientId
 
-        if let status = await statusStore.getStatus(patientId: patientId) {
-            let formatter = ISO8601DateFormatter()
-            let timestamp = formatter.date(from: status.lastTransferTimestamp)
-            return .ok(.init(body: .json(Components.Schemas.PatientStatus(
-                patientId: status.patientId,
-                hasRecords: true,
-                lastTransferTimestamp: timestamp,
-                lastTransferStatus: .success,
-                totalTransfers: status.totalTransfers
-            ))))
-        } else {
-            return .notFound(.init(body: .json(Components.Schemas.ErrorResponse(
-                error: "not_found",
-                message: "No transfer records found for patient \(patientId)"
-            ))))
+        guard let status = await statusStore.getStatus(patientId: patientId) else {
+            return .notFound(
+                .init(
+                    body: .json(
+                        Components.Schemas.ErrorResponse(
+                            error: "not_found",
+                            message: "No transfer records found for patient \(patientId)"
+                        ))))
         }
+        let formatter = ISO8601DateFormatter()
+        let timestamp = formatter.date(from: status.lastTransferTimestamp)
+        return .ok(
+            .init(
+                body: .json(
+                    Components.Schemas.PatientStatus(
+                        patientId: status.patientId,
+                        hasRecords: true,
+                        lastTransferTimestamp: timestamp,
+                        lastTransferStatus: .success,
+                        totalTransfers: status.totalTransfers
+                    ))))
     }
 
     // MARK: - FHIR Observation Builder

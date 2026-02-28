@@ -1,5 +1,5 @@
-import Foundation
 import Crypto
+import Foundation
 
 /// Provides JWT validation using JWKS fetched from the IAM server
 /// (DP4: Security and privacy by design)
@@ -94,7 +94,7 @@ final class JWKSProvider: Sendable {
     private func verifyWithKey(_ jwk: JWKData, headerBase64: String, payloadBase64: String, signatureBase64: String) throws -> JWTPayload {
         // Reconstruct public key from JWK
         guard let xData = base64URLDecode(jwk.x),
-              let yData = base64URLDecode(jwk.y)
+            let yData = base64URLDecode(jwk.y)
         else {
             throw JWTError.invalidKey
         }
@@ -105,7 +105,7 @@ final class JWKSProvider: Sendable {
         // Verify signature
         let signingInput = "\(headerBase64).\(payloadBase64)"
         guard let signingData = signingInput.data(using: .utf8),
-              let signatureData = base64URLDecode(signatureBase64)
+            let signatureData = base64URLDecode(signatureBase64)
         else {
             throw JWTError.invalidFormat
         }
@@ -172,7 +172,8 @@ func base64URLEncode(_ data: Data) -> String {
 }
 
 func base64URLDecode(_ string: String) -> Data? {
-    var base64 = string
+    var base64 =
+        string
         .replacingOccurrences(of: "-", with: "+")
         .replacingOccurrences(of: "_", with: "/")
     let remainder = base64.count % 4

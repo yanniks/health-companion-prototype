@@ -1,9 +1,10 @@
+import Crypto
+import Foundation
+import OpenAPIVapor
 import Testing
 import Vapor
 import VaporTesting
-import OpenAPIVapor
-import Crypto
-import Foundation
+
 @testable import ClientFacingServer
 
 /// Client-Facing Server test suite
@@ -22,7 +23,7 @@ struct ClientFacingServerTests {
         let storageDir = NSTemporaryDirectory() + "client-facing-test-\(UUID().uuidString)"
         try FileManager.default.createDirectory(atPath: storageDir, withIntermediateDirectories: true)
 
-        let jwksProvider = JWKSProvider(iamBaseURL: "http://localhost:0") // won't be called
+        let jwksProvider = JWKSProvider(iamBaseURL: "http://localhost:0")  // won't be called
         let idempotencyStore = IdempotencyStore(directory: storageDir)
 
         app.storage[JWKSProviderKey.self] = jwksProvider
@@ -314,7 +315,7 @@ struct ClientFacingServerTests {
 
         @Test("Base64URL does not contain +, / or =")
         func noForbiddenChars() {
-            let data = Data(repeating: 0xFF, count: 100) // Will produce +, /, = in standard base64
+            let data = Data(repeating: 0xFF, count: 100)  // Will produce +, /, = in standard base64
             let encoded = base64URLEncode(data)
             #expect(!encoded.contains("+"))
             #expect(!encoded.contains("/"))
@@ -355,7 +356,7 @@ struct ClientFacingServerTests {
         func concurrentAccess() async {
             let box = LockedValueBox(0)
             await withTaskGroup(of: Void.self) { group in
-                for _ in 0..<100 {
+                for _ in 0 ..< 100 {
                     group.addTask {
                         box.withLockedValue { $0 += 1 }
                     }

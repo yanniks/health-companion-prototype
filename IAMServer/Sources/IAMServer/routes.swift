@@ -142,9 +142,9 @@ func routes(_ app: Application) throws {
         switch params.grantType {
         case "authorization_code":
             guard let code = params.code,
-                  let redirectURI = params.redirectURI,
-                  let codeVerifier = params.codeVerifier,
-                  let clientId = params.clientId
+                let redirectURI = params.redirectURI,
+                let codeVerifier = params.codeVerifier,
+                let clientId = params.clientId
             else {
                 throw Abort(.badRequest, reason: "Missing required parameters for authorization_code grant")
             }
@@ -165,11 +165,13 @@ func routes(_ app: Application) throws {
             }
 
             // Verify PKCE code challenge (RFC 7636)
-            guard PKCEVerifier.verify(
-                codeVerifier: codeVerifier,
-                codeChallenge: authCode.codeChallenge,
-                method: authCode.codeChallengeMethod
-            ) else {
+            guard
+                PKCEVerifier.verify(
+                    codeVerifier: codeVerifier,
+                    codeChallenge: authCode.codeChallenge,
+                    method: authCode.codeChallengeMethod
+                )
+            else {
                 throw Abort(.badRequest, reason: "PKCE verification failed")
             }
 
@@ -193,7 +195,7 @@ func routes(_ app: Application) throws {
             return TokenResponse(
                 accessToken: accessToken,
                 tokenType: "Bearer",
-                expiresIn: 900, // 15 minutes
+                expiresIn: 900,  // 15 minutes
                 refreshToken: refreshToken,
                 scope: authCode.scope
             )

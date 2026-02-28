@@ -1,8 +1,8 @@
-import Vapor
-import OpenAPIVapor
 import FHIRToGDT
 import GDTKit
 import NIOSSL
+import OpenAPIVapor
+import Vapor
 
 /// Configures the Clinical Integration Server application
 func configure(_ app: Application) throws {
@@ -13,7 +13,7 @@ func configure(_ app: Application) throws {
     // TLS configuration (DP4, §5.5.1): All inter-component communication encrypted
     // Set TLS_CERT_PATH and TLS_KEY_PATH environment variables to enable TLS.
     if let certPath = Environment.get("TLS_CERT_PATH"),
-       let keyPath = Environment.get("TLS_KEY_PATH")
+        let keyPath = Environment.get("TLS_KEY_PATH")
     {
         let certs = try NIOSSLCertificate.fromPEMFile(certPath)
         let privateKey = try NIOSSLPrivateKey(file: keyPath, format: .pem)
@@ -25,7 +25,9 @@ func configure(_ app: Application) throws {
     }
 
     // GDT configuration
-    let gdtOutputPath = Environment.get("GDT_OUTPUT_PATH") ?? URL(string: #filePath)!.deletingLastPathComponent()
+    let gdtOutputPath =
+        Environment.get("GDT_OUTPUT_PATH")
+        ?? URL(string: #filePath)!.deletingLastPathComponent()
         .appending(path: "gdt_exchange").path()
     let gdtSenderID = Environment.get("GDT_SENDER_ID") ?? "HEALTH_COMPANION"
     let gdtReceiverID = Environment.get("GDT_RECEIVER_ID") ?? "PVS"
@@ -40,7 +42,9 @@ func configure(_ app: Application) throws {
     )
 
     // Storage directory for status tracking
-    let storageDir = Environment.get("CLINICAL_STORAGE_DIR") ?? URL(string: #filePath)!.deletingLastPathComponent()
+    let storageDir =
+        Environment.get("CLINICAL_STORAGE_DIR")
+        ?? URL(string: #filePath)!.deletingLastPathComponent()
         .appending(path: "data").path()
     print("Using GDT output directory: \(gdtOutputPath)")
     print("Using storage directory: \(storageDir)")

@@ -1,0 +1,69 @@
+services:
+  iam-server:
+    build:
+      context: ./IAMServer
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      IAM_PORT: "8081"
+      IAM_STORAGE_DIR: "/app/data"
+    volumes:
+      - ./data/iam:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/.well-known/openid-configuration"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  client-facing-server:
+    build:
+      context: ./ClientFacingServer
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      CLIENT_PORT: "8082"
+      IAM_BASE_URL: "http://10.23.162.196:8081"
+      CLINICAL_BASE_URL: "http://clinical-integration-server:8083"
+      CLIENT_STORAGE_DIR: "/app/data"
+      RATE_LIMIT_MAX: "60"
+      RATE_LIMIT_WINDOW: "60"
+    volumes:
+      - ./data/client-facing:/app/data
+    depends_on:
+      iam-server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/v1/metadata"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  clinical-integration-server:
+    build:
+      context: ./ClinicalIntegrationServer
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      CLINICAL_PORT: "8083"
+      GDT_OUTPUT_PATH: "/app/gdt-output"
+      GDT_SENDER_ID: "HEALTH_COMPANION"
+      GDT_RECEIVER_ID: "PVS"
+      CLINICAL_STORAGE_DIR: "/app/data"
+    volumes:
+      - ./data/clinical:/app/data
+      - ./gdt_exchange:/app/gdt-output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/api/v1/metadata"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+

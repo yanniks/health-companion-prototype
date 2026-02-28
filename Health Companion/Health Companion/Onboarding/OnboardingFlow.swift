@@ -6,12 +6,11 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Spezi
 import SpeziHealthKit
 import SpeziOnboarding
 import SpeziViews
 import SwiftUI
-import Spezi
-
 
 /// Displays a multi-step onboarding flow for Health Companion.
 ///
@@ -48,7 +47,6 @@ struct OnboardingFlow: View {
         .interactiveDismissDisabled(!completedOnboardingFlow)
     }
 }
-
 
 #Preview {
     OnboardingFlow()

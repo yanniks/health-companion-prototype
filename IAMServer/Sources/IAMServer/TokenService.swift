@@ -1,11 +1,11 @@
-import Foundation
 import Crypto
+import Foundation
 
 /// Generates and validates JWT access tokens (RFC 7519)
 /// Uses EC P-256 / ES256 algorithm (DP4: Security and privacy by design)
 final class TokenService: Sendable {
     private let keyManager: KeyManager
-    private let accessTokenLifetime: TimeInterval = 900 // 15 minutes
+    private let accessTokenLifetime: TimeInterval = 900  // 15 minutes
 
     init(keyManager: KeyManager) {
         self.keyManager = keyManager
@@ -19,7 +19,9 @@ final class TokenService: Sendable {
     ///   - lastName: Patient last name (optional, embedded as claim)
     ///   - dateOfBirth: Patient date of birth (optional, embedded as claim)
     /// - Returns: Signed JWT string
-    func generateAccessToken(subject: String, scope: String, firstName: String? = nil, lastName: String? = nil, dateOfBirth: String? = nil) throws -> String {
+    func generateAccessToken(subject: String, scope: String, firstName: String? = nil, lastName: String? = nil, dateOfBirth: String? = nil) throws
+        -> String
+    {
         let now = Date()
         let expiration = now.addingTimeInterval(accessTokenLifetime)
 
@@ -69,7 +71,7 @@ final class TokenService: Sendable {
         // Verify signature
         let signingInput = "\(headerBase64).\(payloadBase64)"
         guard let signingData = signingInput.data(using: .utf8),
-              let signatureData = base64URLDecode(signatureBase64)
+            let signatureData = base64URLDecode(signatureBase64)
         else {
             throw TokenError.invalidFormat
         }

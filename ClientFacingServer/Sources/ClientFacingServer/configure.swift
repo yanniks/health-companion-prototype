@@ -1,7 +1,7 @@
-import Vapor
-import OpenAPIVapor
 import Crypto
 import NIOSSL
+import OpenAPIVapor
+import Vapor
 
 /// Configures the Client-Facing Integration Server
 func configure(_ app: Application) async throws {
@@ -13,7 +13,7 @@ func configure(_ app: Application) async throws {
     // Set TLS_CERT_PATH and TLS_KEY_PATH environment variables to enable TLS.
     // In production, a reverse proxy (e.g., nginx) may handle TLS termination instead.
     if let certPath = Environment.get("TLS_CERT_PATH"),
-       let keyPath = Environment.get("TLS_KEY_PATH")
+        let keyPath = Environment.get("TLS_KEY_PATH")
     {
         let certs = try NIOSSLCertificate.fromPEMFile(certPath)
         let privateKey = try NIOSSLPrivateKey(file: keyPath, format: .pem)
@@ -32,7 +32,9 @@ func configure(_ app: Application) async throws {
     // IAM configuration
     let iamBaseURL = Environment.get("IAM_BASE_URL") ?? "http://localhost:8081"
     let clinicalBaseURL = Environment.get("CLINICAL_BASE_URL") ?? "http://localhost:8083"
-    let storageDir = Environment.get("CLIENT_STORAGE_DIR") ?? URL(string: #filePath)!.deletingLastPathComponent()
+    let storageDir =
+        Environment.get("CLIENT_STORAGE_DIR")
+        ?? URL(string: #filePath)!.deletingLastPathComponent()
         .appending(path: "data").path()
 
     // Fetch JWKS from IAM server for token validation

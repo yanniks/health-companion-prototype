@@ -5,7 +5,7 @@ import Foundation
 actor IdempotencyStore {
     private let filePath: String
     private var keys: [String: IdempotencyRecord] = [:]
-    private let keyLifetime: TimeInterval = 24 * 3600 // 24 hours
+    private let keyLifetime: TimeInterval = 24 * 3600  // 24 hours
 
     struct IdempotencyRecord: Codable, Sendable {
         let key: String
@@ -25,13 +25,13 @@ actor IdempotencyStore {
 
         let now = Date().timeIntervalSince1970
         if let data = fileManager.contents(atPath: filePath),
-           let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         {
             let decoder = JSONDecoder()
             for line in content.components(separatedBy: .newlines) where !line.isEmpty {
                 if let lineData = line.data(using: .utf8),
-                   let record = try? decoder.decode(IdempotencyRecord.self, from: lineData),
-                   now - record.createdAt < keyLifetime
+                    let record = try? decoder.decode(IdempotencyRecord.self, from: lineData),
+                    now - record.createdAt < keyLifetime
                 {
                     keys[record.key] = record
                 }

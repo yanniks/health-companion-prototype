@@ -18,7 +18,6 @@ import Spezi
 import SpeziFoundation
 import SwiftUI
 
-
 /// A Spezi `Module` that manages the OAuth 2.0 Authorization Code + PKCE flow.
 ///
 /// Responsibilities:
@@ -42,7 +41,8 @@ import SwiftUI
 /// @Environment(ServerAuthModule.self) private var auth
 /// ```
 @Observable
-final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable {
+@MainActor
+final class ServerAuthModule: Module, EnvironmentAccessible {
     private let logger = Logger(subsystem: "HealthCompanion", category: "ServerAuth")
     private let keychain = KeychainStore()
 
@@ -53,7 +53,6 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// The fixed OAuth client_id identifying this app.
     static let clientId = "healthcompanion-ios"
 
-    static let defaultIamServerURL = "http://localhost:8081"
     static let defaultClientFacingServerURL = "http://localhost:8082"
 
     // MARK: - Observable State
@@ -75,6 +74,9 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// Cached OIDC configuration from the IAM server.
     private var oidcConfig: OIDCConfiguration?
 
+    /// Cached IAM discovery URL obtained from the Client-Facing Server metadata endpoint.
+    private var iamDiscoveryURL: URL?
+
     /// The current access token (kept in memory for fast access).
     private var accessToken: String?
 
@@ -86,12 +88,14 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     func configure() {
         // Restore saved session from Keychain
         if let savedToken = keychain.load(key: KeychainStore.Keys.accessToken),
-           let savedPatientId = keychain.load(key: KeychainStore.Keys.patientId) {
+            let savedPatientId = keychain.load(key: KeychainStore.Keys.patientId)
+        {
             accessToken = savedToken
             patientId = savedPatientId
 
             if let expiryString = keychain.load(key: KeychainStore.Keys.tokenExpiry),
-               let expiryInterval = Double(expiryString) {
+                let expiryInterval = Double(expiryString)
+            {
                 tokenExpiry = Date(timeIntervalSince1970: expiryInterval)
             }
 
@@ -103,15 +107,6 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     }
 
     // MARK: - Server URL
-
-    /// The IAM server base URL, read from UserDefaults.
-    var iamBaseURL: URL? {
-        let urlString = UserDefaults.standard.string(forKey: StorageKeys.iamServerURL) ?? Self.defaultIamServerURL
-        guard let url = URL(string: urlString) else {
-            return nil
-        }
-        return url
-    }
 
     /// The Client-Facing server base URL, read from UserDefaults.
     var clientFacingBaseURL: URL? {
@@ -132,7 +127,7 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// patient ID from the JWT `sub` claim.
     @MainActor
     func login() async throws {
-        guard let baseURL = iamBaseURL else {
+        guard clientFacingBaseURL != nil else {
             throw AuthError.serverURLNotConfigured
         }
 
@@ -141,8 +136,8 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
         defer { isLoading = false }
 
         do {
-            // 1. Discover OIDC configuration
-            let config = try await discoverOIDC(baseURL: baseURL)
+            // 1. Discover IAM via Client-Facing Server metadata, then fetch OIDC config
+            let config = try await discoverOIDC()
 
             // 2. Generate PKCE pair
             let pkce = PKCEHelper.generate()
@@ -169,7 +164,7 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
             )
 
             // 7. Extract patient ID from the JWT access token's sub claim
-            let extractedPatientId = try extractSubjectFromJWT(accessToken!)
+            let extractedPatientId = try Self.extractSubjectFromJWT(accessToken!)
             self.patientId = extractedPatientId
             isAuthenticated = true
             keychain.save(key: KeychainStore.Keys.patientId, value: extractedPatientId)
@@ -186,28 +181,28 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// Revokes the refresh token and clears all stored credentials.
     func logout() async {
         // Revoke refresh token on server
-        if let baseURL = iamBaseURL,
-           let refreshToken = keychain.load(key: KeychainStore.Keys.refreshToken) {
+        if let refreshToken = self.keychain.load(key: KeychainStore.Keys.refreshToken) {
             let config: OIDCConfiguration?
-            if let cached = oidcConfig {
+            if let cached = self.oidcConfig {
                 config = cached
             } else {
-                config = try? await OIDCDiscoveryClient.discover(from: baseURL)
+                config = try? await discoverOIDC()
             }
             if let config {
-                await revokeToken(refreshToken, config: config)
+                await self.revokeToken(refreshToken, config: config)
             }
         }
 
         // Clear local state
-        keychain.deleteAll()
-        accessToken = nil
-        tokenExpiry = nil
-        patientId = nil
-        isAuthenticated = false
-        oidcConfig = nil
-        authError = nil
-        logger.info("Logged out")
+        self.keychain.deleteAll()
+        self.accessToken = nil
+        self.tokenExpiry = nil
+        self.patientId = nil
+        self.isAuthenticated = false
+        self.oidcConfig = nil
+        self.iamDiscoveryURL = nil
+        self.authError = nil
+        self.logger.info("Logged out")
     }
 
     // MARK: - Token Access
@@ -221,14 +216,15 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// - Throws: `AuthError` if refresh fails or user is not authenticated.
     func validAccessToken() async throws -> String {
         // If token is still valid, return it
-        if let token = accessToken,
-           let expiry = tokenExpiry,
-           expiry > Date().addingTimeInterval(30) { // 30s buffer
+        if let token = self.accessToken,
+            let expiry = self.tokenExpiry,
+            expiry > Date().addingTimeInterval(30)
+        {  // 30s buffer
             return token
         }
 
         // Try to refresh
-        try await refreshAccessToken()
+        try await self.refreshAccessToken()
 
         guard let token = accessToken else {
             throw AuthError.notAuthenticated
@@ -236,15 +232,56 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
         return token
     }
 
-    // MARK: - Private: OIDC Discovery
+    // MARK: - Private: Metadata & OIDC Discovery
 
-    private func discoverOIDC(baseURL: URL) async throws -> OIDCConfiguration {
+    /// Fetches the IAM discovery URL from the Client-Facing Server metadata endpoint,
+    /// then performs OIDC discovery against it.
+    ///
+    /// This implements discovery-based configuration (DP3): the iOS app only needs to know
+    /// the Client-Facing Server URL. The IAM server location is obtained automatically
+    /// via `GET /api/v1/metadata` → `iamDiscoveryUrl`.
+    private func discoverOIDC() async throws -> OIDCConfiguration {
         if let cached = oidcConfig {
             return cached
         }
-        let config = try await OIDCDiscoveryClient.discover(from: baseURL)
+
+        let discoveryURL = try await resolveIAMDiscoveryURL()
+        let config = try await OIDCDiscoveryClient.discover(discoveryURL: discoveryURL)
         oidcConfig = config
         return config
+    }
+
+    /// Resolves the IAM OIDC discovery URL via the Client-Facing Server metadata endpoint.
+    /// Caches the result to avoid redundant network calls.
+    private func resolveIAMDiscoveryURL() async throws -> URL {
+        if let cached = iamDiscoveryURL {
+            return cached
+        }
+
+        guard let serverURL = clientFacingBaseURL else {
+            throw AuthError.serverURLNotConfigured
+        }
+
+        let metadataURL = serverURL.appendingPathComponent("api/v1/metadata")
+        logger.info("Fetching server metadata from \(metadataURL)")
+
+        let (data, response) = try await URLSession.shared.data(from: metadataURL)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+            httpResponse.statusCode == 200
+        else {
+            throw AuthError.metadataFetchFailed
+        }
+
+        let metadata = try JSONDecoder().decode(ServerMetadataDTO.self, from: data)
+
+        guard let url = URL(string: metadata.iamDiscoveryUrl) else {
+            throw AuthError.metadataFetchFailed
+        }
+
+        iamDiscoveryURL = url
+        logger.info("Resolved IAM discovery URL: \(url)")
+        return url
     }
 
     // MARK: - Private: Authorization URL
@@ -305,12 +342,13 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
 
     private func extractAuthorizationCode(from url: URL) throws -> String {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let codeItem = components.queryItems?.first(where: { $0.name == "code" }),
-              let code = codeItem.value
+            let codeItem = components.queryItems?.first(where: { $0.name == "code" }),
+            let code = codeItem.value
         else {
             // Check for error response
             if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let errorItem = components.queryItems?.first(where: { $0.name == "error" }) {
+                let errorItem = components.queryItems?.first(where: { $0.name == "error" })
+            {
                 throw AuthError.authorizationDenied(errorItem.value ?? "unknown")
             }
             throw AuthError.missingAuthorizationCode
@@ -346,7 +384,7 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
+            httpResponse.statusCode == 200
         else {
             logger.error("Token exchange failed: \(String(data: data, encoding: .utf8) ?? "no body")")
             throw AuthError.tokenExchangeFailed
@@ -359,16 +397,12 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     // MARK: - Private: Token Refresh
 
     private func refreshAccessToken() async throws {
-        guard let baseURL = iamBaseURL else {
-            throw AuthError.serverURLNotConfigured
-        }
-
         guard let refreshToken = keychain.load(key: KeychainStore.Keys.refreshToken) else {
             isAuthenticated = false
             throw AuthError.notAuthenticated
         }
 
-        let config = try await discoverOIDC(baseURL: baseURL)
+        let config = try await discoverOIDC()
 
         guard let tokenURL = URL(string: config.tokenEndpoint) else {
             throw OIDCError.invalidTokenEndpoint
@@ -387,19 +421,19 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
+            httpResponse.statusCode == 200
         else {
-            logger.warning("Token refresh failed, forcing logout")
-            isAuthenticated = false
-            keychain.deleteAll()
-            accessToken = nil
-            tokenExpiry = nil
+            self.logger.warning("Token refresh failed, forcing logout")
+            self.isAuthenticated = false
+            self.keychain.deleteAll()
+            self.accessToken = nil
+            self.tokenExpiry = nil
             throw AuthError.tokenRefreshFailed
         }
 
         let tokenResponse = try JSONDecoder().decode(TokenResponseDTO.self, from: data)
-        storeTokens(tokenResponse)
-        logger.info("Access token refreshed successfully")
+        self.storeTokens(tokenResponse)
+        self.logger.info("Access token refreshed successfully")
     }
 
     // MARK: - Private: Token Revocation
@@ -414,28 +448,28 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
 
         do {
             let _ = try await URLSession.shared.data(for: request)
-            logger.info("Token revoked successfully")
+            self.logger.info("Token revoked successfully")
         } catch {
-            logger.warning("Token revocation failed: \(error.localizedDescription)")
+            self.logger.warning("Token revocation failed: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Private: Token Storage
 
     private func storeTokens(_ response: TokenResponseDTO) {
-        accessToken = response.accessToken
-        keychain.save(key: KeychainStore.Keys.accessToken, value: response.accessToken)
-        keychain.save(key: KeychainStore.Keys.refreshToken, value: response.refreshToken)
+        self.accessToken = response.accessToken
+        self.keychain.save(key: KeychainStore.Keys.accessToken, value: response.accessToken)
+        self.keychain.save(key: KeychainStore.Keys.refreshToken, value: response.refreshToken)
 
         let expiry = Date().addingTimeInterval(TimeInterval(response.expiresIn))
-        tokenExpiry = expiry
-        keychain.save(
+        self.tokenExpiry = expiry
+        self.keychain.save(
             key: KeychainStore.Keys.tokenExpiry,
             value: String(expiry.timeIntervalSince1970)
         )
 
         if let scope = response.scope {
-            keychain.save(key: KeychainStore.Keys.scope, value: scope)
+            self.keychain.save(key: KeychainStore.Keys.scope, value: scope)
         }
     }
 
@@ -446,7 +480,7 @@ final class ServerAuthModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// The IAM server sets `sub` to the authenticated patient's ID.
     /// This is a lightweight decode — signature verification is not needed
     /// here since the token was just received from the trusted IAM server.
-    private func extractSubjectFromJWT(_ jwt: String) throws -> String {
+    private static func extractSubjectFromJWT(_ jwt: String) throws -> String {
         let parts = jwt.split(separator: ".")
         guard parts.count == 3 else {
             throw AuthError.tokenExchangeFailed
@@ -493,11 +527,19 @@ private struct TokenResponseDTO: Codable {
     }
 }
 
+/// Lightweight DTO for the Client-Facing Server metadata response.
+private struct ServerMetadataDTO: Codable {
+    let serverVersion: String
+    let iamDiscoveryUrl: String
+    let supportedResourceTypes: [String]
+}
+
 // MARK: - Errors
 
 /// Authentication errors for the OAuth flow.
 enum AuthError: LocalizedError {
     case serverURLNotConfigured
+    case metadataFetchFailed
     case notAuthenticated
     case authenticationCancelled
     case authorizationDenied(String)
@@ -509,6 +551,8 @@ enum AuthError: LocalizedError {
         switch self {
         case .serverURLNotConfigured:
             "Server URL is not configured. Please set up the server in Settings."
+        case .metadataFetchFailed:
+            "Failed to fetch server metadata. Please check the server URL."
         case .notAuthenticated:
             "Not authenticated. Please log in."
         case .authenticationCancelled:
@@ -531,7 +575,7 @@ enum AuthError: LocalizedError {
 private final class WebAuthContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let window = scene.windows.first(where: { $0.isKeyWindow })
+            let window = scene.windows.first(where: { $0.isKeyWindow })
         else {
             // Fallback: return the first available window
             let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene

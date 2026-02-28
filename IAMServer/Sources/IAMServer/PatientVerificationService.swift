@@ -24,7 +24,6 @@ protocol PatientVerificationService: Sendable {
     func get(patientId: String) async -> PatientRecord?
 }
 
-
 // MARK: - PatientStore Conformance
 
 /// The bundled `PatientStore` serves as the default `PatientVerificationService`

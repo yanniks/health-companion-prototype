@@ -6,6 +6,7 @@
 //
 
 import Testing
+
 @testable import Health_Companion
 
 struct Health_CompanionTests {

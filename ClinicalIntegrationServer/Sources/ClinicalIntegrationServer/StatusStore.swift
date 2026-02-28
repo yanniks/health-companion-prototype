@@ -21,12 +21,12 @@ actor StatusStore {
         )
 
         if let data = fileManager.contents(atPath: filePath),
-           let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         {
             let decoder = JSONDecoder()
             for line in content.components(separatedBy: .newlines) where !line.isEmpty {
                 if let lineData = line.data(using: .utf8),
-                   let record = try? decoder.decode(PatientStatusRecord.self, from: lineData)
+                    let record = try? decoder.decode(PatientStatusRecord.self, from: lineData)
                 {
                     statuses[record.patientId] = record
                 }

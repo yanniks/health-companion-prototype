@@ -1,6 +1,6 @@
 import Foundation
-import OpenAPIRuntime
 import HTTPTypes
+import OpenAPIRuntime
 
 /// Middleware that validates Bearer tokens for protected endpoints
 /// and stores the validated subject in a task-local for the handler
@@ -11,7 +11,7 @@ struct AuthMiddleware: ServerMiddleware {
     /// Paths that require authentication
     private static let protectedPaths: Set<String> = [
         "/api/v1/observations",
-        "/api/v1/status"
+        "/api/v1/status",
     ]
 
     func intercept(
@@ -30,7 +30,7 @@ struct AuthMiddleware: ServerMiddleware {
 
         // Extract Bearer token
         guard let authHeader = request.headerFields[.authorization],
-              authHeader.lowercased().hasPrefix("bearer ")
+            authHeader.lowercased().hasPrefix("bearer ")
         else {
             let errorBody = try JSONEncoder().encode(ErrorBody(error: "authentication_error", message: "Missing or invalid Authorization header"))
             return (
@@ -72,4 +72,3 @@ struct AuthMiddleware: ServerMiddleware {
         let message: String
     }
 }
-

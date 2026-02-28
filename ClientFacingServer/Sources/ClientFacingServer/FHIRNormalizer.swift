@@ -56,16 +56,18 @@ enum FHIRNormalizer: Sendable {
         // 2. Component codes + classification labels
         if let components = observation.component {
             for component in components {
-                let isClassification = component.code.coding?.contains {
-                    $0.code?.value?.string == "HKElectrocardiogram.Classification"
-                } ?? false
+                let isClassification =
+                    component.code.coding?.contains {
+                        $0.code?.value?.string == "HKElectrocardiogram.Classification"
+                    } ?? false
 
                 normalizeCodeableConcept(component.code)
 
                 // Map raw classification enum values to readable labels
                 if isClassification, case .string(let str) = component.value,
-                   let raw = str.value?.string,
-                   let label = classificationLabels[raw] {
+                    let raw = str.value?.string,
+                    let label = classificationLabels[raw]
+                {
                     component.value = .string(FHIRPrimitive(FHIRString(label)))
                 }
             }
@@ -113,9 +115,11 @@ enum FHIRNormalizer: Sendable {
             }
             let hkCode = coding.code?.value?.string ?? ""
             if let replacement = codeReplacements[hkCode] {
-                if !hasNonHK || !normalized.contains(where: {
-                    $0.code?.value?.string == replacement.code
-                }) {
+                if !hasNonHK
+                    || !normalized.contains(where: {
+                        $0.code?.value?.string == replacement.code
+                    })
+                {
                     normalized.insert(
                         Coding(
                             code: FHIRPrimitive(FHIRString(replacement.code)),

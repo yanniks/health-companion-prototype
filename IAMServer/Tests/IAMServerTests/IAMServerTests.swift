@@ -1,6 +1,7 @@
 import Testing
 import Vapor
 import VaporTesting
+
 @testable import IAMServer
 
 /// IAM Server test suite validating OAuth 2.0 / OIDC implementation
@@ -84,13 +85,17 @@ struct IAMServerTests {
         @Test("Register a new patient")
         func registerPatient() async throws {
             try await withApp(configure: configure) { app in
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Max",
-                        lastName: "Mustermann",
-                        dateOfBirth: "1990-01-15"
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Max",
+                                lastName: "Mustermann",
+                                dateOfBirth: "1990-01-15"
+                            ))
+                    }
+                ) { res async throws in
                     #expect(res.status == .ok)
 
                     let response = try res.content.decode(PatientRegistrationResponse.self)
@@ -105,13 +110,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 // Register a patient
                 var patientId = ""
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Anna",
-                        lastName: "Schmidt",
-                        dateOfBirth: "1985-03-20"
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Anna",
+                                lastName: "Schmidt",
+                                dateOfBirth: "1985-03-20"
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -130,13 +139,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 // Register
                 var patientId = ""
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Test",
-                        lastName: "Delete",
-                        dateOfBirth: "2000-06-01"
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Test",
+                                lastName: "Delete",
+                                dateOfBirth: "2000-06-01"
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -165,13 +178,17 @@ struct IAMServerTests {
         @Test("Register with empty firstName fails")
         func registerEmptyFirstName() async throws {
             try await withApp(configure: configure) { app in
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "",
-                        lastName: "Valid",
-                        dateOfBirth: "1990-01-01"
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "",
+                                lastName: "Valid",
+                                dateOfBirth: "1990-01-01"
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .badRequest)
                 }
             }
@@ -189,13 +206,17 @@ struct IAMServerTests {
                 // Step 1: Register patient to get credentials
                 var patientId = ""
                 let dateOfBirth = "1995-07-10"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "OAuth",
-                        lastName: "Test",
-                        dateOfBirth: dateOfBirth
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "OAuth",
+                                lastName: "Test",
+                                dateOfBirth: dateOfBirth
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -205,7 +226,8 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
                 // Step 3: GET /authorize — should return HTML login page
-                let authQuery = "response_type=code&client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=test-state-123&code_challenge=\(codeChallenge)&code_challenge_method=S256"
+                let authQuery =
+                    "response_type=code&client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=test-state-123&code_challenge=\(codeChallenge)&code_challenge_method=S256"
 
                 try await app.testing().test(.GET, "authorize?\(authQuery)") { res async throws in
                     #expect(res.status == .ok)
@@ -217,11 +239,15 @@ struct IAMServerTests {
 
                 // Step 4: POST /authorize with credentials — should redirect with code
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=test-state-123&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dateOfBirth)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=test-state-123&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dateOfBirth)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     #expect(res.status == .seeOther)
 
                     let location = res.headers.first(name: .location)!
@@ -233,16 +259,20 @@ struct IAMServerTests {
                 }
 
                 // Step 5: Token exchange
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async throws in
                     #expect(res.status == .ok)
 
                     let tokenResponse = try res.content.decode(TokenResponse.self)
@@ -273,13 +303,17 @@ struct IAMServerTests {
                 // Register patient
                 var patientId = ""
                 let dob = "1990-01-01"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Reuse",
-                        lastName: "Test",
-                        dateOfBirth: dob
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Reuse",
+                                lastName: "Test",
+                                dateOfBirth: dob
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -290,41 +324,53 @@ struct IAMServerTests {
 
                 // Authenticate via POST /authorize
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state1&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state1&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     let location = res.headers.first(name: .location)!
                     let components = URLComponents(string: location)!
                     authCode = components.queryItems!.first(where: { $0.name == "code" })!.value!
                 }
 
                 // First exchange — should succeed
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .ok)
                 }
 
                 // Second exchange — should fail
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .badRequest)
                 }
             }
@@ -335,13 +381,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 var patientId = ""
                 let dob = "1990-01-01"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "PKCE",
-                        lastName: "Wrong",
-                        dateOfBirth: dob
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "PKCE",
+                                lastName: "Wrong",
+                                dateOfBirth: dob
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -351,27 +401,35 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: correctVerifier)!
 
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state2&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state2&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     let location = res.headers.first(name: .location)!
                     let components = URLComponents(string: location)!
                     authCode = components.queryItems!.first(where: { $0.name == "code" })!.value!
                 }
 
                 // Exchange with wrong verifier
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: wrongVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: wrongVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .badRequest)
                 }
             }
@@ -382,13 +440,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 var patientId = ""
                 let dob = "1990-01-01"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Refresh",
-                        lastName: "Flow",
-                        dateOfBirth: dob
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Refresh",
+                                lastName: "Flow",
+                                dateOfBirth: dob
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -397,42 +459,54 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=state3&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid%20observation.write&state=state3&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     let location = res.headers.first(name: .location)!
                     let components = URLComponents(string: location)!
                     authCode = components.queryItems!.first(where: { $0.name == "code" })!.value!
                 }
 
                 var refreshToken = ""
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async throws in
                     let tokenResponse = try res.content.decode(TokenResponse.self)
                     refreshToken = tokenResponse.refreshToken
                 }
 
                 // Use refresh token to get new tokens
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "refresh_token",
-                        code: nil,
-                        redirectURI: nil,
-                        codeVerifier: nil,
-                        clientId: nil,
-                        refreshToken: refreshToken
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "refresh_token",
+                                code: nil,
+                                redirectURI: nil,
+                                codeVerifier: nil,
+                                clientId: nil,
+                                refreshToken: refreshToken
+                            ))
+                    }
+                ) { res async throws in
                     #expect(res.status == .ok)
 
                     let newTokens = try res.content.decode(TokenResponse.self)
@@ -449,13 +523,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 var patientId = ""
                 let dob = "1990-01-01"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Rotation",
-                        lastName: "Test",
-                        dateOfBirth: dob
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Rotation",
+                                lastName: "Test",
+                                dateOfBirth: dob
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -464,56 +542,72 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state4&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state4&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     let location = res.headers.first(name: .location)!
                     let components = URLComponents(string: location)!
                     authCode = components.queryItems!.first(where: { $0.name == "code" })!.value!
                 }
 
                 var refreshToken = ""
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async throws in
                     let tokenResponse = try res.content.decode(TokenResponse.self)
                     refreshToken = tokenResponse.refreshToken
                 }
 
                 // Use refresh token once
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "refresh_token",
-                        code: nil,
-                        redirectURI: nil,
-                        codeVerifier: nil,
-                        clientId: nil,
-                        refreshToken: refreshToken
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "refresh_token",
+                                code: nil,
+                                redirectURI: nil,
+                                codeVerifier: nil,
+                                clientId: nil,
+                                refreshToken: refreshToken
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .ok)
                 }
 
                 // Try to reuse — should fail
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "refresh_token",
-                        code: nil,
-                        redirectURI: nil,
-                        codeVerifier: nil,
-                        clientId: nil,
-                        refreshToken: refreshToken
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "refresh_token",
+                                code: nil,
+                                redirectURI: nil,
+                                codeVerifier: nil,
+                                clientId: nil,
+                                refreshToken: refreshToken
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .badRequest)
                 }
             }
@@ -524,13 +618,17 @@ struct IAMServerTests {
             try await withApp(configure: configure) { app in
                 var patientId = ""
                 let dob = "1990-01-01"
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Revoke",
-                        lastName: "Test",
-                        dateOfBirth: dob
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Revoke",
+                                lastName: "Test",
+                                dateOfBirth: dob
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -539,52 +637,68 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
                 var authCode = ""
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state5&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state5&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=\(dob)"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     let location = res.headers.first(name: .location)!
                     let components = URLComponents(string: location)!
                     authCode = components.queryItems!.first(where: { $0.name == "code" })!.value!
                 }
 
                 var refreshToken = ""
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "authorization_code",
-                        code: authCode,
-                        redirectURI: "healthcompanion://callback",
-                        codeVerifier: codeVerifier,
-                        clientId: knownClientId,
-                        refreshToken: nil
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "authorization_code",
+                                code: authCode,
+                                redirectURI: "healthcompanion://callback",
+                                codeVerifier: codeVerifier,
+                                clientId: knownClientId,
+                                refreshToken: nil
+                            ))
+                    }
+                ) { res async throws in
                     let tokenResponse = try res.content.decode(TokenResponse.self)
                     refreshToken = tokenResponse.refreshToken
                 }
 
                 // Revoke
-                try await app.testing().test(.POST, "revoke", beforeRequest: { req async throws in
-                    try req.content.encode(RevocationRequest(
-                        token: refreshToken,
-                        tokenTypeHint: "refresh_token"
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "revoke",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            RevocationRequest(
+                                token: refreshToken,
+                                tokenTypeHint: "refresh_token"
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .ok)
                 }
 
                 // Try to use revoked token
-                try await app.testing().test(.POST, "token", beforeRequest: { req async throws in
-                    try req.content.encode(TokenRequest(
-                        grantType: "refresh_token",
-                        code: nil,
-                        redirectURI: nil,
-                        codeVerifier: nil,
-                        clientId: nil,
-                        refreshToken: refreshToken
-                    ))
-                }) { res async in
+                try await app.testing().test(
+                    .POST, "token",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            TokenRequest(
+                                grantType: "refresh_token",
+                                code: nil,
+                                redirectURI: nil,
+                                codeVerifier: nil,
+                                clientId: nil,
+                                refreshToken: refreshToken
+                            ))
+                    }
+                ) { res async in
                     #expect(res.status == .badRequest)
                 }
             }
@@ -596,7 +710,8 @@ struct IAMServerTests {
                 let codeVerifier = "unknown-client-test-verifier-43-chars-long!"
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
-                let authQuery = "response_type=code&client_id=nonexistent&redirect_uri=healthcompanion://callback&scope=openid&state=state6&code_challenge=\(codeChallenge)&code_challenge_method=S256"
+                let authQuery =
+                    "response_type=code&client_id=nonexistent&redirect_uri=healthcompanion://callback&scope=openid&state=state6&code_challenge=\(codeChallenge)&code_challenge_method=S256"
 
                 try await app.testing().test(.GET, "authorize?\(authQuery)") { res async in
                     #expect(res.status == .badRequest)
@@ -608,13 +723,17 @@ struct IAMServerTests {
         func wrongCredentials() async throws {
             try await withApp(configure: configure) { app in
                 var patientId = ""
-                try await app.testing().test(.POST, "patients", beforeRequest: { req async throws in
-                    try req.content.encode(PatientRegistrationRequest(
-                        firstName: "Wrong",
-                        lastName: "DOB",
-                        dateOfBirth: "1990-01-01"
-                    ))
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "patients",
+                    beforeRequest: { req async throws in
+                        try req.content.encode(
+                            PatientRegistrationRequest(
+                                firstName: "Wrong",
+                                lastName: "DOB",
+                                dateOfBirth: "1990-01-01"
+                            ))
+                    }
+                ) { res async throws in
                     let response = try res.content.decode(PatientRegistrationResponse.self)
                     patientId = response.patientId
                 }
@@ -623,11 +742,15 @@ struct IAMServerTests {
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
                 // POST with wrong date of birth — should return login page with error
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state7&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=2000-12-31"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state7&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=\(patientId)&date_of_birth=2000-12-31"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     #expect(res.status == .ok)
                     let body = String(buffer: res.body)
                     #expect(body.contains("Invalid credentials"))
@@ -641,11 +764,15 @@ struct IAMServerTests {
                 let codeVerifier = "nonexist-patient-verifier-at-least-43-chars!"
                 let codeChallenge = PKCEVerifier.generateChallenge(from: codeVerifier)!
 
-                try await app.testing().test(.POST, "authorize", beforeRequest: { req async throws in
-                    req.headers.contentType = .urlEncodedForm
-                    let body = "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state8&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=nonexistent-id&date_of_birth=1990-01-01"
-                    req.body = .init(string: body)
-                }) { res async throws in
+                try await app.testing().test(
+                    .POST, "authorize",
+                    beforeRequest: { req async throws in
+                        req.headers.contentType = .urlEncodedForm
+                        let body =
+                            "client_id=\(knownClientId)&redirect_uri=healthcompanion://callback&scope=openid&state=state8&code_challenge=\(codeChallenge)&code_challenge_method=S256&patient_id=nonexistent-id&date_of_birth=1990-01-01"
+                        req.body = .init(string: body)
+                    }
+                ) { res async throws in
                     #expect(res.status == .ok)
                     let body = String(buffer: res.body)
                     #expect(body.contains("Unknown patient ID"))

@@ -9,6 +9,7 @@ This implementation follows the reference architecture defined in the accompanyi
 - [Architecture Overview](#architecture-overview)
 - [Requirements](#requirements)
 - [Getting Started](#getting-started)
+- [Running with Docker](#running-with-docker)
 - [Environment Variables](#environment-variables)
 - [Testing](#testing)
 - [OpenAPI Specifications](#openapi-specifications)
@@ -101,10 +102,80 @@ xcodebuild -scheme "Health Companion" -sdk iphonesimulator \
 ### 5. Configure the iOS app
 
 In the app's onboarding flow:
-1. Enter the IAM Server URL (e.g., `http://localhost:8081`)
-2. Enter the Client-Facing Server URL (e.g., `http://localhost:8082`)
-3. Enter the `patientId` from step 3
-4. Complete the OAuth login
+1. Enter the Server URL (e.g., `http://localhost:8082`) — the app automatically discovers the IAM server configuration via the Client-Facing Server's `/api/v1/metadata` endpoint
+2. Enter the `patientId` from step 3
+3. Complete the OAuth login
+
+## Running with Docker
+
+All three backend servers can be built and run as Docker containers using the included `docker-compose.yml`.
+
+### Prerequisites
+
+- **Docker** 20.10+ and **Docker Compose** v2
+
+### Start all services
+
+```bash
+docker compose up --build
+```
+
+This builds all three server images from source (using `swift:6.2` build stage and `ubuntu:noble` runtime) and starts them with correct inter-service networking:
+
+| Service | Container Port | Host Port | Health Check |
+|---------|---------------|-----------|---|
+| `iam-server` | 8081 | 8081 | `GET /.well-known/openid-configuration` |
+| `client-facing-server` | 8082 | 8082 | `GET /api/v1/metadata` |
+| `clinical-integration-server` | 8083 | 8083 | `GET /api/v1/metadata` |
+
+The Client-Facing Server waits for the IAM Server's health check to pass before starting.
+
+### Persistent volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `iam-data` | Patient store, key material, audit logs |
+| `client-data` | Idempotency store, audit logs |
+| `clinical-data` | Status store, audit logs |
+| `gdt-exchange` | GDT 2.1 output files for PMS pickup |
+
+To reset all data:
+
+```bash
+docker compose down -v
+```
+
+### Run in detached mode
+
+```bash
+docker compose up --build -d
+docker compose logs -f          # follow logs
+docker compose down              # stop all services
+```
+
+### Register a test patient (Docker)
+
+```bash
+curl -X POST http://localhost:8081/patients \
+  -H "Content-Type: application/json" \
+  -d '{"firstName": "Max", "lastName": "Mustermann", "dateOfBirth": "1990-01-15"}'
+```
+
+### Accessing GDT output
+
+GDT files written by the Clinical Integration Server are stored in the `gdt-exchange` volume. To inspect them:
+
+```bash
+docker compose exec clinical-integration-server ls /app/gdt-output
+```
+
+Or mount a local directory instead of the named volume for direct PMS access:
+
+```yaml
+# In docker-compose.yml, replace the gdt-exchange volume with a bind mount:
+volumes:
+  - ./gdt_exchange:/app/gdt-output
+```
 
 ## Environment Variables
 
@@ -278,21 +349,25 @@ The following intentional deviations from the reference architecture are documen
 Swift-Code/
 ├── agents.md                          # Root agent instructions (this file references)
 ├── README.md                          # This file
+├── docker-compose.yml                 # Docker Compose for all backend services
 ├── Specs/
 │   ├── openapi-client-facing.yaml        # OpenAPI 3.1 spec for Client-Facing API
 │   └── openapi-clinical-integration.yaml # OpenAPI 3.1 spec for Clinical Integration API
 ├── IAMServer/                         # OAuth 2.0 / OIDC identity provider
 │   ├── Package.swift
+│   ├── Dockerfile
 │   ├── agents.md
 │   ├── Sources/IAMServer/
 │   └── Tests/IAMServerTests/
 ├── ClientFacingServer/                # FHIR data reception + auth validation
 │   ├── Package.swift
+│   ├── Dockerfile
 │   ├── agents.md
 │   ├── Sources/ClientFacingServer/
 │   └── Tests/ClientFacingServerTests/
 ├── ClinicalIntegrationServer/         # FHIR → GDT 2.1 conversion
 │   ├── Package.swift
+│   ├── Dockerfile
 │   ├── agents.md
 │   ├── Sources/{ClinicalIntegrationServer,GDTKit,FHIRToGDT}/
 │   └── Tests/{ClinicalIntegrationServerTests,GDTKitTests,FHIRToGDTTests}/

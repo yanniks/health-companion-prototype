@@ -10,7 +10,6 @@ import SpeziHealthKit
 import SpeziViews
 import SwiftUI
 
-
 /// A detail view showing the ECG waveform and recording details.
 struct ElectrocardiogramDetailView: View {
     let electrocardiogram: HKElectrocardiogram

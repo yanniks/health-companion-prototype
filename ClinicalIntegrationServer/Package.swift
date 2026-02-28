@@ -26,7 +26,7 @@ let package = Package(
                 "FHIRToGDT",
             ],
             plugins: [
-                .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator"),
+                .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")
             ]
         ),
         .target(

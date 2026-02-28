@@ -18,11 +18,11 @@ actor PatientStore {
 
         // Load existing records
         if let data = fileManager.contents(atPath: filePath),
-           let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         {
             for line in content.components(separatedBy: .newlines) where !line.isEmpty {
                 if let lineData = line.data(using: .utf8),
-                   let record = try? JSONDecoder().decode(PatientRecord.self, from: lineData)
+                    let record = try? JSONDecoder().decode(PatientRecord.self, from: lineData)
                 {
                     patients[record.id] = record
                     // Track highest numeric ID to continue incrementing

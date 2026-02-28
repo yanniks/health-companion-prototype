@@ -1,5 +1,5 @@
-import Foundation
 import Crypto
+import Foundation
 
 /// Append-only audit logger for the client-facing integration component (DP4).
 ///
@@ -97,7 +97,7 @@ actor AuditLogger {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         guard let data = try? encoder.encode(entry),
-              var line = String(data: data, encoding: .utf8)
+            var line = String(data: data, encoding: .utf8)
         else {
             return
         }

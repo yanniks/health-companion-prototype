@@ -10,7 +10,6 @@ import SpeziOnboarding
 import SpeziViews
 import SwiftUI
 
-
 /// An onboarding view that initiates OAuth login via the IAM server.
 ///
 /// Uses `ServerAuthModule` to perform the authorization code + PKCE flow

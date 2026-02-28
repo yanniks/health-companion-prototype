@@ -13,11 +13,10 @@ import SpeziFoundation
 import SpeziHealthKit
 import SwiftUI
 
-
 actor HealthCompanionStandard: Standard, HealthKitConstraint, EnvironmentAccessible {
     private let logger = Logger(subsystem: "HealthCompanion", category: "Standard")
     private let ecgProcessor = ECGFHIRProcessor()
-    
+
     @Dependency(HealthKit.self) private var healthKit
     @Dependency(FHIRStore.self) private var fhirStore
 
@@ -33,28 +32,28 @@ actor HealthCompanionStandard: Standard, HealthKitConstraint, EnvironmentAccessi
             await processECGSamples(ecgSamples)
         }
     }
-    
+
     func handleDeletedObjects<Sample>(
         _ deletedObjects: some Collection<HKDeletedObject> & Sendable,
         ofType sampleType: SpeziHealthKit.SampleType<Sample>
     ) async {
         logger.debug("Received \(deletedObjects.count) deleted objects of type \(sampleType.displayTitle)")
     }
-    
+
     private func processECGSamples(_ ecgSamples: [HKElectrocardiogram]) async {
         logger.info("Processing \(ecgSamples.count) ECG samples")
-        
+
         do {
             let fhirResources = try await ecgProcessor.convertToFHIRResources(
                 ecgSamples,
                 using: healthKit
             )
-            
+
             for resource in fhirResources {
                 await fhirStore.insert(resource)
                 logger.debug("Inserted FHIR resource: \(resource.displayName)")
             }
-            
+
             logger.info("Successfully processed and stored \(fhirResources.count) ECG FHIR resources")
         } catch {
             logger.error("Failed to process ECG samples: \(error.localizedDescription)")

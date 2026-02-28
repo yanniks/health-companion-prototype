@@ -2,6 +2,10 @@ import Foundation
 import ModelsR4
 import OpenAPIRuntime
 
+#if canImport(FoundationNetworking)
+    import FoundationNetworking
+#endif
+
 /// Implements the OpenAPI-generated APIProtocol for client-facing integration
 /// Receives FHIR observations from iOS client, validates auth, forwards to clinical integration
 /// (DP3: Layered architecture, DR1: No manual data entry tasks, DR4: Device abstraction)
@@ -32,9 +36,11 @@ struct ClientFacingHandler: APIProtocol {
     ) async throws -> Operations.submitObservations.Output {
         // Auth is validated by AuthMiddleware; subject is in TaskLocal
         guard let patientId = AuthContext.currentSubject else {
-            return .unauthorized(.init(body: .json(
-                .init(error: "authentication_error", message: "Not authenticated")
-            )))
+            return .unauthorized(
+                .init(
+                    body: .json(
+                        .init(error: "authentication_error", message: "Not authenticated")
+                    )))
         }
 
         let idempotencyKey = input.headers.Idempotency_hyphen_Key
@@ -42,7 +48,7 @@ struct ClientFacingHandler: APIProtocol {
         // Check idempotency — return cached result if already processed
         if let cached = await idempotencyStore.check(key: idempotencyKey, clientId: patientId) {
             if let data = cached.data(using: .utf8),
-               let result = try? JSONDecoder.fhirDecoder.decode(Components.Schemas.SubmissionResult.self, from: data)
+                let result = try? JSONDecoder.fhirDecoder.decode(Components.Schemas.SubmissionResult.self, from: data)
             {
                 return .ok(.init(body: .json(result)))
             }
@@ -58,9 +64,11 @@ struct ClientFacingHandler: APIProtocol {
         }
 
         guard let entries = bundle.entry, !entries.isEmpty else {
-            return .badRequest(.init(body: .json(
-                .init(error: "validation_error", message: "Bundle contains no entries")
-            )))
+            return .badRequest(
+                .init(
+                    body: .json(
+                        .init(error: "validation_error", message: "Bundle contains no entries")
+                    )))
         }
 
         // Patient demographics are embedded in the JWT claims by the IAM server,
@@ -77,7 +85,7 @@ struct ClientFacingHandler: APIProtocol {
         var observationObjects: [[String: Any]] = []
         for entry in entries {
             if let resource = entry.resource,
-               let rawData = try? encoder.encode(resource)
+                let rawData = try? encoder.encode(resource)
             {
                 // Attempt FHIR decode → normalize → re-encode
                 let normalizedData = FHIRNormalizer.normalizeJSON(rawData) ?? rawData
@@ -92,7 +100,7 @@ struct ClientFacingHandler: APIProtocol {
             "patientFirstName": patientFirstName as Any,
             "patientLastName": patientLastName as Any,
             "patientDateOfBirth": patientDateOfBirth as Any,
-            "observations": observationObjects
+            "observations": observationObjects,
         ]
 
         // Forward to clinical integration server
@@ -111,7 +119,7 @@ struct ClientFacingHandler: APIProtocol {
         do {
             let (responseData, httpResponse) = try await URLSession.shared.data(for: clinicalRequest)
             if let httpResp = httpResponse as? HTTPURLResponse, httpResp.statusCode == 200 || httpResp.statusCode == 201,
-               let clinicalResult = try? JSONDecoder().decode(ClinicalProcessingResponse.self, from: responseData)
+                let clinicalResult = try? JSONDecoder().decode(ClinicalProcessingResponse.self, from: responseData)
             {
                 totalProcessed = clinicalResult.totalProcessed
                 successful = clinicalResult.successful
@@ -119,12 +127,13 @@ struct ClientFacingHandler: APIProtocol {
                 status = failed == 0 ? .success : (successful > 0 ? .partial : .error)
 
                 for result in clinicalResult.results ?? [] {
-                    observationResults.append(Components.Schemas.ObservationResult(
-                        observationId: nil,
-                        status: result.error == nil ? .success : .error,
-                        error: result.error,
-                        warnings: result.warnings
-                    ))
+                    observationResults.append(
+                        Components.Schemas.ObservationResult(
+                            observationId: nil,
+                            status: result.error == nil ? .success : .error,
+                            error: result.error,
+                            warnings: result.warnings
+                        ))
                 }
             } else {
                 status = .error
@@ -161,7 +170,7 @@ struct ClientFacingHandler: APIProtocol {
         let resultEncoder = JSONEncoder()
         resultEncoder.dateEncodingStrategy = .iso8601
         if let resultData = try? resultEncoder.encode(submissionResult),
-           let resultJSON = String(data: resultData, encoding: .utf8)
+            let resultJSON = String(data: resultData, encoding: .utf8)
         {
             await idempotencyStore.store(key: idempotencyKey, clientId: patientId, responseJSON: resultJSON)
         }
@@ -175,9 +184,11 @@ struct ClientFacingHandler: APIProtocol {
         _ input: Operations.getTransferStatus.Input
     ) async throws -> Operations.getTransferStatus.Output {
         guard let patientId = AuthContext.currentSubject else {
-            return .unauthorized(.init(body: .json(
-                .init(error: "authentication_error", message: "Not authenticated")
-            )))
+            return .unauthorized(
+                .init(
+                    body: .json(
+                        .init(error: "authentication_error", message: "Not authenticated")
+                    )))
         }
 
         // Fetch status from clinical integration server
@@ -186,7 +197,7 @@ struct ClientFacingHandler: APIProtocol {
         do {
             let (data, response) = try await URLSession.shared.data(from: statusURL)
             if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
-               let clinicalStatus = try? JSONDecoder().decode(ClinicalPatientStatus.self, from: data)
+                let clinicalStatus = try? JSONDecoder().decode(ClinicalPatientStatus.self, from: data)
             {
                 let lastTransfer: Date?
                 if let timestamp = clinicalStatus.lastTransferTimestamp {

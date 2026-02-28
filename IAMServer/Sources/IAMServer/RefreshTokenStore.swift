@@ -5,7 +5,7 @@ import Foundation
 actor RefreshTokenStore {
     private let filePath: String
     private var tokens: [String: RefreshToken] = [:]
-    private let tokenLifetime: TimeInterval = 30 * 24 * 3600 // 30 days
+    private let tokenLifetime: TimeInterval = 30 * 24 * 3600  // 30 days
 
     init(directory: String) {
         self.filePath = "\(directory)/refresh_tokens.txt"
@@ -19,13 +19,13 @@ actor RefreshTokenStore {
         // Load existing tokens, filtering expired
         let now = Date().timeIntervalSince1970
         if let data = fileManager.contents(atPath: filePath),
-           let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         {
             let decoder = JSONDecoder()
             for line in content.components(separatedBy: .newlines) where !line.isEmpty {
                 if let lineData = line.data(using: .utf8),
-                   let token = try? decoder.decode(RefreshToken.self, from: lineData),
-                   now - token.createdAt < tokenLifetime
+                    let token = try? decoder.decode(RefreshToken.self, from: lineData),
+                    now - token.createdAt < tokenLifetime
                 {
                     tokens[token.token] = token
                 }
@@ -90,7 +90,8 @@ actor RefreshTokenStore {
 
     private func generateSecureToken() -> String {
         var bytes = [UInt8](repeating: 0, count: 48)
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        var rng = SystemRandomNumberGenerator()
+        for i in bytes.indices { bytes[i] = rng.next() }
         return Data(bytes).map { String(format: "%02x", $0) }.joined()
     }
 

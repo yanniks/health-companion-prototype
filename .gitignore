@@ -4,6 +4,8 @@
 xcuserdata/
 DerivedData/
 IAMServer/data/
+/data/
+/gdt_exchange/
 ClinicalIntegrationServer/Sources/ClinicalIntegrationServer/gdt_exchange/
 ClinicalIntegrationServer/Sources/ClinicalIntegrationServer/data/
 .swiftpm/configuration/registries.json

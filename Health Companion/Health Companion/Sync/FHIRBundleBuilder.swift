@@ -16,7 +16,6 @@ import Foundation
 import ModelsR4
 import SpeziFHIR
 
-
 /// Builds FHIR R4 Bundles from SpeziFHIR resources for server submission.
 ///
 /// Each resource is wrapped as a `POST Observation` entry inside a FHIR

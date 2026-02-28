@@ -9,7 +9,6 @@ import SpeziHealthKit
 import SpeziHealthKitUI
 import SwiftUI
 
-
 /// Main view displaying a list of ECG recordings.
 struct ChartView: View {
     @HealthKitQuery(.electrocardiogram, timeRange: .last(years: 3)) private var electrocardiograms

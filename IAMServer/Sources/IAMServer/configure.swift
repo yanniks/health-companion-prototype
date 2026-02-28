@@ -1,5 +1,5 @@
-import Vapor
 import NIOSSL
+import Vapor
 
 /// Configures the IAM Server application
 /// - Parameter app: The Vapor Application instance
@@ -12,7 +12,7 @@ func configure(_ app: Application) throws {
     // TLS configuration (DP4, §5.5.1): All inter-component communication encrypted
     // Set TLS_CERT_PATH and TLS_KEY_PATH environment variables to enable TLS.
     if let certPath = Environment.get("TLS_CERT_PATH"),
-       let keyPath = Environment.get("TLS_KEY_PATH")
+        let keyPath = Environment.get("TLS_KEY_PATH")
     {
         let certs = try NIOSSLCertificate.fromPEMFile(certPath)
         let privateKey = try NIOSSLPrivateKey(file: keyPath, format: .pem)

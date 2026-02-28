@@ -24,7 +24,6 @@ import SpeziFHIR
 import SpeziFoundation
 import SwiftUI
 
-
 /// Synchronization status for the UI.
 enum SyncStatus: Sendable, Equatable {
     case idle
@@ -32,7 +31,6 @@ enum SyncStatus: Sendable, Equatable {
     case success(Date)
     case error(String)
 }
-
 
 /// A Spezi `Module` that synchronizes FHIR resources to the Client-Facing Server.
 ///
@@ -49,7 +47,8 @@ enum SyncStatus: Sendable, Equatable {
 /// }
 /// ```
 @Observable
-final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable {
+@MainActor
+final class ServerSyncModule: Module, EnvironmentAccessible {
     private let logger = Logger(subsystem: "HealthCompanion", category: "ServerSync")
 
     @ObservationIgnored @Dependency(ServerAuthModule.self) private var authModule
@@ -65,6 +64,9 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
 
     /// Number of pending (unsynced) resources.
     private(set) var pendingCount: Int = 0
+
+    /// Number of successfully synced resources.
+    private(set) var syncedCount: Int = 0
 
     /// Last error encountered during sync.
     private(set) var lastError: String?
@@ -104,37 +106,37 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
 
     /// Starts a background task that watches for new FHIR resources and syncs automatically.
     private func startAutoSync() {
-        monitorTask = Task { [weak self] in
+        self.monitorTask = Task { [weak self] in
             guard let self else { return }
             // Brief startup delay to let FHIRStore populate
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(for: .seconds(3))
 
             while !Task.isCancelled {
                 await self.autoSyncIfNeeded()
                 // Poll every 10 seconds for new observations
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                try? await Task.sleep(for: .seconds(10))
             }
         }
     }
 
     /// Checks whether new observations have appeared and triggers a sync if so.
     private func autoSyncIfNeeded() async {
-        let currentCount = await fhirStore.observations.count
-        let unsynced = await fhirStore.observations.filter { resource in
+        let currentCount = self.fhirStore.observations.count
+        let unsynced = self.fhirStore.observations.filter { resource in
             guard let fhirId = resource.fhirId else { return false }
             return !syncedResourceIds.contains(fhirId)
         }
         pendingCount = unsynced.count
 
         // Trigger sync when there are unsynced resources and auth is available
-        if !unsynced.isEmpty && authModule.isAuthenticated {
+        if !unsynced.isEmpty && self.authModule.isAuthenticated {
             logger.info("Auto-sync: detected \(unsynced.count) unsynced resources, starting sync")
-            await syncNow()
+            await self.syncNow()
         }
 
         // Refresh server-side transfer status periodically
         if authModule.isAuthenticated {
-            transferStatus = await fetchTransferStatus()
+            transferStatus = await self.fetchTransferStatus()
         }
 
         lastKnownObservationCount = currentCount
@@ -154,26 +156,26 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// wraps them in a FHIR Bundle, and POSTs to the Client-Facing Server.
     /// Implements exponential backoff retry for transient failures (DP4, §5.5.1).
     func syncNow() async {
-        guard authModule.isAuthenticated else {
-            syncStatus = .error("Not authenticated")
+        guard self.authModule.isAuthenticated else {
+            self.syncStatus = .error("Not authenticated")
             return
         }
 
-        guard let serverURL = authModule.clientFacingBaseURL else {
-            syncStatus = .error("Server URL not configured")
+        guard let serverURL = self.authModule.clientFacingBaseURL else {
+            self.syncStatus = .error("Server URL not configured")
             return
         }
 
-        let allResources = await fhirStore.observations
+        let allResources = self.fhirStore.observations
         let unsyncedResources = allResources.filter { resource in
             guard let fhirId = resource.fhirId else { return false }
             return !syncedResourceIds.contains(fhirId)
         }
-        pendingCount = unsyncedResources.count
+        self.pendingCount = unsyncedResources.count
 
         guard !unsyncedResources.isEmpty else {
-            logger.info("No unsynced resources to send")
-            syncStatus = .idle
+            self.logger.info("No unsynced resources to send")
+            self.syncStatus = .idle
             return
         }
 
@@ -199,7 +201,7 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
 
         // Retry loop with exponential backoff (DP4, §5.5.1)
         var lastError: Error?
-        for attempt in 0...Self.maxRetries {
+        for attempt in 0 ... Self.maxRetries {
             if attempt > 0 {
                 let delay = Self.retryBaseDelay * pow(2.0, Double(attempt - 1))
                 logger.info("Retry attempt \(attempt)/\(Self.maxRetries) after \(delay)s delay")
@@ -207,7 +209,7 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
             }
 
             do {
-                let result = try await performUpload(
+                let result = try await self.performUpload(
                     serverURL: serverURL,
                     bodyData: bodyData,
                     idempotencyKey: idempotencyKey,
@@ -222,6 +224,7 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
                         }
                     }
                     saveSyncedIds()
+                    syncedCount = syncedResourceIds.count
                     pendingCount = 0
                     lastSuccessfulSync = Date()
                     lastError = nil
@@ -297,7 +300,7 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
             throw SyncError.nonRetriable("Forbidden: \(body?.message ?? "unknown")")
         case .tooManyRequests:
             throw SyncError.rateLimited
-        case .undocumented(statusCode: let statusCode, _):
+        case .undocumented(let statusCode, _):
             if statusCode >= 500 {
                 throw SyncError.serverError(statusCode)
             }
@@ -309,13 +312,13 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
     /// using the generated OpenAPI client.
     func fetchTransferStatus() async -> TransferStatusInfo? {
         guard authModule.isAuthenticated,
-              let serverURL = authModule.clientFacingBaseURL
+            let serverURL = authModule.clientFacingBaseURL
         else {
             return nil
         }
 
         do {
-            let client = makeOpenAPIClient(serverURL: serverURL)
+            let client = self.makeOpenAPIClient(serverURL: serverURL)
             let response = try await client.getTransferStatus()
 
             switch response {
@@ -331,7 +334,7 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
             case .unauthorized:
                 logger.warning("Transfer status: unauthorized")
                 return nil
-            case .undocumented(statusCode: let statusCode, _):
+            case .undocumented(let statusCode, _):
                 logger.warning("Transfer status: unexpected status \(statusCode)")
                 return nil
             }
@@ -356,11 +359,12 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
 
     private func loadSyncedIds() {
         guard let data = try? Data(contentsOf: syncedIdsFileURL),
-              let content = String(data: data, encoding: .utf8)
+            let content = String(data: data, encoding: .utf8)
         else {
             return
         }
         syncedResourceIds = Set(content.components(separatedBy: "\n").filter { !$0.isEmpty })
+        syncedCount = syncedResourceIds.count
         logger.debug("Loaded \(self.syncedResourceIds.count) synced resource IDs")
     }
 
@@ -368,8 +372,23 @@ final class ServerSyncModule: Module, EnvironmentAccessible, @unchecked Sendable
         let content = syncedResourceIds.joined(separator: "\n")
         try? content.data(using: .utf8)?.write(to: syncedIdsFileURL, options: .atomic)
     }
-}
 
+    /// Resets all sync state, clearing synced IDs and persisted data.
+    func resetAllData() {
+        monitorTask?.cancel()
+        monitorTask = nil
+        syncedResourceIds.removeAll()
+        syncedCount = 0
+        pendingCount = 0
+        lastSuccessfulSync = nil
+        lastError = nil
+        transferStatus = nil
+        syncStatus = .idle
+        lastKnownObservationCount = 0
+        try? FileManager.default.removeItem(at: syncedIdsFileURL)
+        logger.info("All sync data reset")
+    }
+}
 
 // MARK: - Transfer Status DTO
 

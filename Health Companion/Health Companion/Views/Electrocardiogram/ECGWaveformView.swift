@@ -11,7 +11,6 @@ import SpeziHealthKit
 import SpeziViews
 import SwiftUI
 
-
 /// A view displaying the ECG waveform chart.
 struct ECGWaveformView: View {
     let measurements: [HKElectrocardiogram.Measurement]
@@ -73,11 +72,11 @@ struct ECGWaveformView: View {
     }
 
     private var voltageRange: ClosedRange<Double> {
-        guard !measurements.isEmpty else { return -0.001...0.001 }
+        guard !measurements.isEmpty else { return -0.001 ... 0.001 }
         let voltages = measurements.map { $0.voltage.doubleValue(for: .volt()) }
         let minV = voltages.min() ?? -0.001
         let maxV = voltages.max() ?? 0.001
         let padding = (maxV - minV) * 0.1
-        return (minV - padding)...(maxV + padding)
+        return (minV - padding) ... (maxV + padding)
     }
 }

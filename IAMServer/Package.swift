@@ -8,8 +8,8 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.110.1"),
-        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.121.2"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "4.0.0"),
     ],
     targets: [
         .executableTarget(
@@ -17,7 +17,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "Crypto", package: "swift-crypto"),
-                .product(name: "_CryptoExtras", package: "swift-crypto"),
+                .product(name: "CryptoExtras", package: "swift-crypto"),
             ]
         ),
         .testTarget(

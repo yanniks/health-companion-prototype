@@ -9,7 +9,6 @@
 import Foundation
 import OSLog
 
-
 /// Represents an OpenID Connect Discovery Document as returned by
 /// `/.well-known/openid-configuration`.
 struct OIDCConfiguration: Codable, Sendable {
@@ -36,22 +35,33 @@ struct OIDCConfiguration: Codable, Sendable {
     }
 }
 
-
-/// Discovers OIDC configuration from a given IAM base URL.
+/// Discovers OIDC configuration from the IAM server.
 enum OIDCDiscoveryClient {
     private static let logger = Logger(subsystem: "HealthCompanion", category: "OIDCDiscovery")
 
-    /// Fetches the OIDC discovery document from the IAM server.
+    /// Fetches the OIDC discovery document from a base URL by appending
+    /// `/.well-known/openid-configuration`.
     /// - Parameter baseURL: The IAM server base URL (e.g. `http://localhost:8081`).
     /// - Returns: The parsed OIDC configuration.
     static func discover(from baseURL: URL) async throws -> OIDCConfiguration {
         let discoveryURL = baseURL.appendingPathComponent(".well-known/openid-configuration")
+        return try await discover(discoveryURL: discoveryURL)
+    }
+
+    /// Fetches the OIDC discovery document from a full discovery URL.
+    ///
+    /// Use this overload when the complete discovery URL (including
+    /// `/.well-known/openid-configuration`) is already known, e.g.
+    /// when obtained from the Client-Facing Server metadata endpoint.
+    /// - Parameter discoveryURL: The full OIDC discovery URL.
+    /// - Returns: The parsed OIDC configuration.
+    static func discover(discoveryURL: URL) async throws -> OIDCConfiguration {
         logger.info("Fetching OIDC discovery from \(discoveryURL)")
 
         let (data, response) = try await URLSession.shared.data(from: discoveryURL)
 
         guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200
+            httpResponse.statusCode == 200
         else {
             throw OIDCError.discoveryFailed
         }
@@ -62,7 +72,6 @@ enum OIDCDiscoveryClient {
         return config
     }
 }
-
 
 // MARK: - Errors
 

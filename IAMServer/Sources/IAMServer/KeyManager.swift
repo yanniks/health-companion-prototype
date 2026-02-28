@@ -1,5 +1,5 @@
-import Foundation
 import Crypto
+import Foundation
 
 /// Manages EC P-256 key pair for JWT signing and verification
 /// Keys are persisted to the storage directory for restartability
@@ -19,8 +19,8 @@ final class KeyManager: Sendable {
         )
 
         if fileManager.fileExists(atPath: keyFilePath),
-           let keyData = fileManager.contents(atPath: keyFilePath),
-           let pemString = String(data: keyData, encoding: .utf8)
+            let keyData = fileManager.contents(atPath: keyFilePath),
+            let pemString = String(data: keyData, encoding: .utf8)
         {
             self.privateKey = try P256.Signing.PrivateKey(pemRepresentation: pemString)
             // Derive stable key ID from public key
@@ -99,7 +99,8 @@ func base64URLEncode(_ data: Data) -> String {
 }
 
 func base64URLDecode(_ string: String) -> Data? {
-    var base64 = string
+    var base64 =
+        string
         .replacingOccurrences(of: "-", with: "+")
         .replacingOccurrences(of: "_", with: "/")
 

@@ -8,7 +8,6 @@
 import HealthKit
 import SwiftUI
 
-
 /// A view displaying detailed information about an ECG recording.
 struct ECGDetailsView: View {
     let electrocardiogram: HKElectrocardiogram
