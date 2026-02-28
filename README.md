@@ -53,7 +53,7 @@ Additionally:
 ## Requirements
 
 - **Swift 6.2** or later
-- **macOS 14** or later (for backend servers)
+- **macOS 14 or later / Linux-based OS** (for backend servers)
 - **Xcode 16.2+** (for iOS app)
 - **iOS 17+** target (for Health Companion app)
 - No database required — all persistence uses text files (JSON lines)
