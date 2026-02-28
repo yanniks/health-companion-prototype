@@ -1,5 +1,9 @@
 # PGHD Integration Artifact — Exemplary Implementation
 
+> [!IMPORTANT]
+> **This project is not production-safe and must not be deployed in a clinical or any other real-world environment.**
+> Known security vulnerabilities exist that could lead to unauthorized access to patient data, injection of fabricated medical records, and full authentication bypass. See [SECURITY_FINDINGS.md](SECURITY_FINDINGS.md) for details on the identified issues. Note that this list is **not exhaustive** — additional security issues beyond those documented may exist.
+
 Exemplary implementation of a health data integration artifact that enables the automated transfer of Apple Watch health data (Patient-Generated Health Data, PGHD) from a patient's iPhone to a medical practice's Practice Management System (PMS).
 
 This implementation follows the reference architecture defined in the accompanying thesis and demonstrates technical feasibility of the integration concept.
