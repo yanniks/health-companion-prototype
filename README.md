@@ -24,10 +24,10 @@ The artifact consists of four components as defined by the reference architectur
 
 ```
 ┌──────────────┐     FHIR Bundle      ┌──────────────────┐     FHIR JSON     ┌─────────────────────┐
-│              │   (Bearer + Idemp.)   │                  │                   │                     │
-│  iOS Client  ├──────────────────────►│  Client-Facing   ├──────────────────►│ Clinical Integration│
-│  (iPhone)    │◄──────────────────────┤  Server (:8082)  │◄──────────────────┤ Server (:8083)      │
-│              │    SubmissionResult   │                  │   GDT Result      │                     │
+│              │   (Bearer + Idemp.)  │                  │                   │                     │
+│  iOS Client  ├─────────────────────►│  Client-Facing   ├──────────────────►│ Clinical Integration│
+│  (iPhone)    │◄─────────────────────┤  Server (:8082)  │◄──────────────────┤ Server (:8083)      │
+│              │    SubmissionResult  │                  │   GDT Result      │                     │
 └──────┬───────┘                      └────────┬─────────┘                   └──────────┬──────────┘
        │                                       │                                        │
        │  OAuth 2.0 + PKCE                     │  JWKS fetch                            │  GDT 2.1 files
